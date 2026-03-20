@@ -1,13 +1,14 @@
+#pragma once
 #include <cstdio>
 #include <stdexcept>
 #include <sys/file.h>
 
 class FileGuard {
 private:
-  std::FILE *f;
+  std::FILE *f = nullptr;
 
 public:
-  explicit FileGuard(std::FILE *f) : f{f} {}
+  explicit FileGuard() {}
 
   ~FileGuard() { unbind(); }
 
@@ -18,8 +19,10 @@ public:
 
   FileGuard &operator=(FileGuard &&other) noexcept {
     if (this != &other) {
-      if (f)
+      if (f) {
         flock(fileno(f), LOCK_UN);
+        fclose(f);
+      }
       f = other.f;
       other.f = nullptr;
     }
@@ -27,7 +30,7 @@ public:
     return *this;
   }
 
-  const std::FILE *get() const { return this->f; }
+  std::FILE *get() const { return this->f; }
   bool is_open() const { return f != nullptr; }
 
   bool bind(const char *path) {
@@ -42,7 +45,7 @@ public:
     if (!f)
       throw std::runtime_error("Could not open path provided");
 
-    if (flock(fileno(f), LOCK_UN) != 0) {
+    if (flock(fileno(f), LOCK_SH) != 0) {
       std::fclose(f);
       f = nullptr;
       throw std::runtime_error("Could not lock the file");
@@ -55,6 +58,7 @@ public:
     if (f) {
       flock(fileno(f), LOCK_UN);
       fclose(f);
+      f = nullptr;
     }
   }
 };
