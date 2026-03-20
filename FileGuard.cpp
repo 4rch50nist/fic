@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <stdexcept>
 #include <sys/file.h>
 
 class FileGuard {
@@ -8,12 +9,7 @@ private:
 public:
   explicit FileGuard(std::FILE *f) : f{f} {}
 
-  ~FileGuard() {
-    if (f) {
-      flock(fileno(f), LOCK_UN);
-      fclose(f);
-    }
-  }
+  ~FileGuard() { unbind(); }
 
   FileGuard(const FileGuard &) = delete;
   FileGuard &operator=(const FileGuard &) = delete;
@@ -32,4 +28,33 @@ public:
   }
 
   const std::FILE *get() const { return this->f; }
+  bool is_open() const { return f != nullptr; }
+
+  bool bind(const char *path) {
+
+    /// if f is already bound, then we should ideally let the caller
+    /// know that it is bound. So it needs to unbind it first and
+    /// them go ahead.
+    if (f)
+      return false;
+
+    f = std::fopen(path, "rb");
+    if (!f)
+      throw std::runtime_error("Could not open path provided");
+
+    if (flock(fileno(f), LOCK_UN) != 0) {
+      std::fclose(f);
+      f = nullptr;
+      throw std::runtime_error("Could not lock the file");
+    }
+
+    return true;
+  }
+
+  void unbind() {
+    if (f) {
+      flock(fileno(f), LOCK_UN);
+      fclose(f);
+    }
+  }
 };
