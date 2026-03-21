@@ -1,14 +1,10 @@
 #pragma once
+#include "IHashEngine.hpp"
 #include "IO_Driver.hpp"
 #include "ThreadSafe.hpp"
 #include <algorithm>
 #include <mutex>
 #include <thread>
-
-static void hash_chunk_stub(Chunk &c) {
-  c.hash.fill(0);
-  c.release_data();
-}
 
 struct PipelineResult {
   StreamResult streamResult;
@@ -16,7 +12,7 @@ struct PipelineResult {
 };
 
 inline PipelineResult
-run_pipeline(const char *path,
+run_pipeline(const char *path, const IHashEngine &engine,
              size_t num_workers = (size_t)std::thread::hardware_concurrency()) {
   if (!num_workers)
     num_workers = 4;
@@ -36,7 +32,8 @@ run_pipeline(const char *path,
         if (!item)
           break;
 
-        hash_chunk_stub(*item);
+        engine.hash(item->data.get(), item->size, item->hash);
+        item->release_data();
 
         std::lock_guard lock(mx);
         results.push_back(std::move(*item));
