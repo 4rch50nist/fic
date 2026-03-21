@@ -20,4 +20,4 @@ public:
         EVP_MD_CTX_free(ctx);
         std::memcpy(out.data(), tmp, 32);
     }
-};  
+};      
