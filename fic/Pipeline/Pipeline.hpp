@@ -1,6 +1,6 @@
 #pragma once
-#include "IHashEngine.hpp"
-#include "IO_Driver.hpp"
+#include "../../IHashEngine.hpp"
+#include "../IO/ChunkReader.hpp"
 #include "ThreadSafe.hpp"
 #include <algorithm>
 #include <mutex>
