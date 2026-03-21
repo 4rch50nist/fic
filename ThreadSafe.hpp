@@ -7,10 +7,10 @@
 
 template <typename T> class ThreadSafeQueue {
   std::queue<T> q;
-  std::mutex mx;
+  mutable std::mutex mx;
   std::condition_variable cv;
 
-  const size_t max_size = 16;
+  const size_t max_size;
   bool closed = false;
 
 public:
@@ -31,7 +31,7 @@ public:
 
   std::optional<T> pop() {
     std::unique_lock lock(mx);
-    cv.wait(lock, [&] { return !q.empty || closed; });
+    cv.wait(lock, [&] { return !q.empty() || closed; });
 
     if (q.empty())
       return std::nullopt;

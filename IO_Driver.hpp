@@ -12,6 +12,7 @@ struct Chunk {
   uint64_t offset;
   size_t size;
   std::unique_ptr<uint8_t[]> data;
+  std::array<uint8_t, 32> hash;
 
   Chunk(Chunk &&) = default;
   Chunk &operator=(Chunk &&) = default;
@@ -20,6 +21,8 @@ struct Chunk {
   Chunk &operator=(const Chunk &) = delete;
   Chunk(uint64_t id, uint64_t off, size_t sz, std::unique_ptr<uint8_t[]> d)
       : chunk_id{id}, offset{off}, size{sz}, data{std::move(d)} {}
+
+  void release_data() { data.reset(); }
 };
 
 using ChunkCallback = std::function<bool(Chunk &&)>;
