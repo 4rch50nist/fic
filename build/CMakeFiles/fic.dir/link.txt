@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/fic.dir/main.cpp.o CMakeFiles/fic.dir/fic/Manifest/Manifest.cpp.o -o fic  /opt/homebrew/Cellar/openssl@3/3.6.0/lib/libssl.dylib /opt/homebrew/Cellar/openssl@3/3.6.0/lib/libcrypto.dylib
