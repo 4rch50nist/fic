@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unistd.h>
 #include <unordered_set>
 #include <vector>
 
