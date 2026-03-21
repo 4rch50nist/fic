@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+# do not track build
+build/
+*.o
+*.a
+*.so
+compile_commands.json
+.cache/

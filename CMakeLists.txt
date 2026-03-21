@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(OpenSSL REQUIRED)
 
-# collect sources
+
 add_executable(fic
     main.cpp
     fic/Manifest/Manifest.cpp
