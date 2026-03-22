@@ -5,7 +5,7 @@
 #include <functional>
 #include <memory>
 
-constexpr size_t CHUNK_SIZE = 1 * 1024 * 1024;
+constexpr size_t CHUNK_SIZE = 8 * 1024 * 1024;
 
 struct Chunk {
   uint64_t chunk_id;

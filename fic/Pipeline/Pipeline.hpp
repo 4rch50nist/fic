@@ -3,7 +3,6 @@
 #include "../IO/ChunkReader.hpp"
 #include "ThreadSafe.hpp"
 #include <algorithm>
-#include <mutex>
 #include <thread>
 
 struct PipelineResult {
@@ -17,16 +16,15 @@ run_pipeline(const char *path, const IHashEngine &engine,
   if (!num_workers)
     num_workers = 4;
 
-  ThreadSafeQueue<Chunk> queue(num_workers << 1);
-
-  std::vector<Chunk> results;
-  std::mutex mx;
+  ThreadSafeQueue<Chunk> queue(64);
+  std::vector<std::vector<Chunk>> per_worker_results(num_workers);
 
   std::vector<std::thread> workers;
   workers.reserve(num_workers);
 
-  for (int i = 0; i < num_workers; i++) {
-    workers.emplace_back([&]() {
+  for (size_t i = 0; i < num_workers; i++) {
+    workers.emplace_back([&, i]() {
+      auto &local = per_worker_results[i];
       while (true) {
         auto item = queue.pop();
         if (!item)
@@ -34,9 +32,7 @@ run_pipeline(const char *path, const IHashEngine &engine,
 
         engine.hash(item->data.get(), item->size, item->hash);
         item->release_data();
-
-        std::lock_guard lock(mx);
-        results.push_back(std::move(*item));
+        local.push_back(std::move(*item));
       }
     });
   }
@@ -45,16 +41,23 @@ run_pipeline(const char *path, const IHashEngine &engine,
     queue.push(std::move(c));
     return true;
   });
-
   queue.close();
-
   for (auto &w : workers)
     w.join();
 
-  std::sort(results.begin(), results.end(),
-            [](const Chunk &c1, const Chunk &c2) {
-              return c1.chunk_id < c2.chunk_id;
-            });
+  std::vector<Chunk> results;
+  results.reserve([&] {
+    size_t n = 0;
+    for (auto &v : per_worker_results)
+      n += v.size();
+    return n;
+  }());
+  for (auto &v : per_worker_results)
+    for (auto &c : v)
+      results.push_back(std::move(c));
 
+  std::sort(results.begin(), results.end(), [](const Chunk &a, const Chunk &b) {
+    return a.chunk_id < b.chunk_id;
+  });
   return PipelineResult{.streamResult = status, .chunks = std::move(results)};
 }
