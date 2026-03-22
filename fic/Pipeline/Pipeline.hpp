@@ -59,5 +59,6 @@ run_pipeline(const char *path, const IHashEngine &engine,
   std::sort(results.begin(), results.end(), [](const Chunk &a, const Chunk &b) {
     return a.chunk_id < b.chunk_id;
   });
+
   return PipelineResult{.streamResult = status, .chunks = std::move(results)};
 }
