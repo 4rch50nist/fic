@@ -3,6 +3,7 @@
 #include "../IO/ChunkReader.hpp"
 #include "../MerkelTree/MerkelTreeData.hpp"
 #include <cstdint>
+#include <ctime>
 #include <optional>
 #include <string>
 #include <unistd.h>
