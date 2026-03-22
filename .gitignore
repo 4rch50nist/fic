@@ -48,3 +48,6 @@ build/
 *.so
 compile_commands.json
 .cache/
+
+
+compile_commands.json
