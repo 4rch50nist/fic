@@ -71,6 +71,11 @@ inline StreamResult stream_chunk(const char *path, ChunkCallback on_chunk) {
     if (bytes_read > 0) {
       Chunk chunk{chunk_id, offset, bytes_read, std::move(buf)};
 
+      /// The streamer did call on_chunk(Chunk &&) but for some reason
+      /// we encountered a state where the return is false (implying that
+      /// something) that should not have happened has happened. So we must
+      /// abort and let the caller know that we couldnt complete the request
+      /// because something went wrong in their function.
       if (!on_chunk(std::move(chunk)))
         return StreamResult::Aborted;
 

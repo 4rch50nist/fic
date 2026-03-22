@@ -15,8 +15,22 @@ struct Diff {
   Hash32 new_hash;
 };
 
+///
+/// Read https://datatracker.ietf.org/doc/html/rfc6962 for information on
+/// leaf(0x00) and node(0x01) logic it is under (2.1) Merkle Hash Trees
+/// and for general overview of Merkle Tree :
+/// https://ieeexplore.ieee.org/document/9545917 and for further reading (Verkle
+/// Tree on limited-bandwith networks you can refer):
+/// https://math.mit.edu/research/highschool/primes/materials/2018/Kuszmaul.pdf
+///
+///
+/// In general though, for odd leafs we use the simpler strategy of
+/// even-duplication rather than premature promotion.
+///
 class MerkelTree {
 public:
+  /// The Merle Tree is stored as a heap (2i +1, 2i+2) since in general
+  /// Merkle Trees are complete binary trees.
   static MerkelTreeData build(const std::vector<Hash32> &leaves,
                               const IHashEngine &engine) {
     if (leaves.empty())
@@ -46,10 +60,14 @@ public:
     return tree;
   }
 
+  /// Verify the root of the previous with the root of the new one.
   static bool verify(const MerkelTreeData &old_tree,
                      const MerkelTreeData &new_tree) {
     return old_tree.root() == new_tree.root();
   }
+
+  /// Generate diff between old and new by walking the tree and comparing
+  /// children.
   static std::vector<Diff> diff(const MerkelTreeData &old_tree,
                                 const MerkelTreeData &new_tree) {
     std::vector<Diff> diffs;
@@ -61,6 +79,8 @@ public:
 private:
   static Hash32 hash_leaf(const Hash32 &leaf, const IHashEngine &engine) {
     uint8_t buf[33];
+
+    /// Prefix leafs with 0x00 to stop attack
     buf[0] = 0x00;
     std::memcpy(buf + 1, leaf.data(), 32);
     Hash32 out;
@@ -90,9 +110,12 @@ private:
     walk(old_tree, new_tree, 2 * i + 2, diffs);
   }
 
+  /// Combined 32b left right child and spit out 65b concatenated-hashed output.
   static Hash32 combine(const Hash32 &left, const Hash32 &right,
                         const IHashEngine &engine) {
     uint8_t buf[65];
+
+    // prefix inner nodes with 0x01 to prevent attacks;
     buf[0] = 0x01;
     std::memcpy(buf + 1, left.data(), 32);
     std::memcpy(buf + 33, right.data(), 32);
