@@ -1,6 +1,7 @@
 #include "SignerClient.hpp"
 
 #include <cstring>
+#include <filesystem>
 #include <sodium.h>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -78,4 +79,8 @@ bool verify_signature(const std::vector<uint8_t> &msg,
                                            public_key);
 
   return result == 0; // 0 = valid
+}
+bool keys_exist() {
+  return std::filesystem::exists("public.key") &&
+         std::filesystem::exists("secret.key");
 }

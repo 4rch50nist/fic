@@ -1,3 +1,4 @@
+#include "SignerClient.cpp"
 #include <array>
 #include <cerrno>
 #include <csignal>
@@ -27,26 +28,6 @@ void signal_handler(int) {
   std::cout << "\nShutting down signer...\n";
   cleanup();
   std::exit(0);
-}
-
-void recv_all(int sock, uint8_t *data, size_t len) {
-  size_t total = 0;
-  while (total < len) {
-    ssize_t r = read(sock, data + total, len - total);
-    if (r <= 0)
-      throw std::runtime_error("read failed");
-    total += r;
-  }
-}
-
-void send_all(int sock, const uint8_t *data, size_t len) {
-  size_t total = 0;
-  while (total < len) {
-    ssize_t s = write(sock, data + total, len - total);
-    if (s <= 0)
-      throw std::runtime_error("write failed");
-    total += s;
-  }
 }
 
 std::vector<uint8_t> load_secret_key() {

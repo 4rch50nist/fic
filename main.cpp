@@ -129,7 +129,11 @@ int main(int argc, char **argv) {
   t6 = Clock::now();
   auto old_manifest = read_manifest(manifest_path);
   t7 = Clock::now();
-
+  if (!keys_exist()) {
+    std::printf("error: missing keys (public.key / secret.key)\n");
+    std::printf("please run: fic-keygen\n");
+    return RC_ERROR;
+  }
   if (!old_manifest) {
     // first run
     std::printf("no manifest found — first run\n");
@@ -173,7 +177,12 @@ int main(int argc, char **argv) {
 
     auto old_tree = MerkelTree::build(old_hashes, *engine);
     auto old_msg = build_signing_message(old_manifest->header);
-
+    if (!verify_signature(old_msg, old_manifest->signature)) {
+      std::printf("status:    MODIFIED\n");
+      std::printf("changed:   Signature is either corrupt or has been changed. "
+                  "Eitherways, manifest has lost integrity.");
+      return RC_ERROR;
+    }
     if (verify_signature(old_msg, old_manifest->signature) &&
         MerkelTree::verify(old_tree, new_tree)) {
       // file unchanged
