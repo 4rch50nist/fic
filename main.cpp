@@ -4,11 +4,13 @@
 #include "fic/Manifest/Manifest.hpp"
 #include "fic/MerkelTree/MerkelTree.hpp"
 #include "fic/Pipeline/Pipeline.hpp"
+#include "fic/Signer/SignerClient.hpp"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 
+static const std::string UX_SOCKET_FILE = "/tmp/fic_file_signer.sock";
 static constexpr int RC_OK = 0;
 static constexpr int RC_MODIFIED = 1;
 static constexpr int RC_ERROR = 2;
@@ -134,6 +136,14 @@ int main(int argc, char **argv) {
 
     auto manifest = generate_manifest(file_path, pipeline_result.chunks,
                                       new_tree.root(), algo);
+    auto msg = build_signing_message(manifest.header);
+    try {
+      auto sig = request_signature_from_host(msg, UX_SOCKET_FILE);
+      manifest.signature = sig;
+    } catch (const std::exception &e) {
+      std::printf("error: signing failed: %s\n", e.what());
+      return RC_ERROR;
+    }
 
     t8 = Clock::now();
     if (!write_manifest(manifest, manifest_path)) {
@@ -162,8 +172,10 @@ int main(int argc, char **argv) {
       old_hashes.push_back(c.hash);
 
     auto old_tree = MerkelTree::build(old_hashes, *engine);
+    auto old_msg = build_signing_message(old_manifest->header);
 
-    if (MerkelTree::verify(old_tree, new_tree)) {
+    if (verify_signature(old_msg, old_manifest->signature) &&
+        MerkelTree::verify(old_tree, new_tree)) {
       // file unchanged
       std::printf("status:   OK — file unchanged\n");
       std::printf("root:     ");
@@ -173,7 +185,6 @@ int main(int argc, char **argv) {
       t8 = t9 = Clock::now();
       print_timing();
       return RC_OK;
-
     } else {
       // file modified — find exactly what changed
       auto diffs = MerkelTree::diff(old_tree, new_tree);

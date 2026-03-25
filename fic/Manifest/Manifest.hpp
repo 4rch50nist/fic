@@ -36,6 +36,7 @@ struct Manifest {
   ManifestHeader header;
   std::string file_path;
   std::vector<ManifestChunk> chunks;
+  std::array<uint8_t, 64> signature; /// Ed25519
 };
 
 Manifest generate_manifest(const std::string &file_path,
@@ -48,3 +49,4 @@ std::optional<Manifest> read_manifest(const std::string &path);
 
 std::vector<size_t> compare_manifest(const Manifest &old_manifest,
                                      const std::vector<Chunk> &new_chunks);
+std::vector<uint8_t> build_signing_message(const ManifestHeader &h);

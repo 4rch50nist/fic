@@ -8,7 +8,8 @@
 template <typename T> class ThreadSafeQueue {
   std::queue<T> q;
   mutable std::mutex mx;
-  std::condition_variable cv;
+  std::condition_variable cv_pop;
+  std::condition_variable cv_push;
 
   const size_t max_size;
   bool closed = false;
@@ -19,19 +20,19 @@ public:
   void push(T item) {
     std::unique_lock lock(mx);
 
-    cv.wait(lock, [&] { return q.size() < max_size || closed; });
+    cv_push.wait(lock, [&] { return q.size() < max_size || closed; });
 
     if (closed)
       return;
 
     q.push(std::move(item));
     lock.unlock();
-    cv.notify_one();
+    cv_push.notify_one();
   }
 
   std::optional<T> pop() {
     std::unique_lock lock(mx);
-    cv.wait(lock, [&] { return !q.empty() || closed; });
+    cv_pop.wait(lock, [&] { return !q.empty() || closed; });
 
     if (q.empty())
       return std::nullopt;
@@ -39,7 +40,7 @@ public:
     T item = std::move(q.front());
     q.pop();
     lock.unlock();
-    cv.notify_one();
+    cv_pop.notify_one();
     return item;
   }
 
@@ -48,7 +49,8 @@ public:
       std::lock_guard lock(mx);
       closed = true;
     }
-    cv.notify_all();
+    cv_pop.notify_all();
+    cv_push.notify_all();
   }
 
   bool is_closed() const {
