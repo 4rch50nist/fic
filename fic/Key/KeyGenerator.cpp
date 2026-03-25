@@ -1,11 +1,20 @@
-
-
-#include <fcntl.h>
-#include <fstream>
+#include <cstdlib>
 #include <iostream>
 #include <sodium.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <sstream>
+#include <vector>
+
+// base64 encode
+std::string base64_encode(const unsigned char *data, size_t len) {
+  size_t out_len =
+      sodium_base64_ENCODED_LEN(len, sodium_base64_VARIANT_ORIGINAL);
+  std::vector<char> out(out_len);
+
+  sodium_bin2base64(out.data(), out.size(), data, len,
+                    sodium_base64_VARIANT_ORIGINAL);
+
+  return std::string(out.data());
+}
 
 int main() {
   if (sodium_init() < 0) {
@@ -20,42 +29,27 @@ int main() {
     std::cerr << "key generation failed\n";
     return 1;
   }
-  {
-    std::ofstream pub("public.key", std::ios::binary);
-    if (!pub) {
-      std::cerr << "failed to open public.key\n";
-      return 1;
-    }
-    if (!pub.write(reinterpret_cast<char *>(pk), sizeof(pk))) {
-      std::cerr << "failed to write public key\n";
-      return 1;
-    }
+
+  std::string sk_b64 = base64_encode(sk, sizeof(sk));
+
+  std::stringstream cmd;
+  cmd << "security add-generic-password "
+      << "-a fic-key "
+      << "-s fic-signer "
+      << "-w \"" << sk_b64 << "\" "
+      << "-U"; // update if exists
+
+  int ret = system(cmd.str().c_str());
+  if (ret != 0) {
+    std::cerr << "failed to store key in Keychain\n";
+    return 1;
   }
-  {
-    int fd =
-        open("secret.key", O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0600);
+  FILE *f = fopen("public.key", "wb");
+  fwrite(pk, 1, sizeof(pk), f);
+  fclose(f);
 
-    if (fd < 0) {
-      std::cerr << "failed to open secret.key\n";
-      return 1;
-    }
-
-    ssize_t written = write(fd, sk, sizeof(sk));
-    if (written != sizeof(sk)) {
-      std::cerr << "failed to write secret key\n";
-      close(fd);
-      return 1;
-    }
-
-    if (fsync(fd) != 0) {
-      std::cerr << "warning: fsync failed on secret.key\n";
-    }
-
-    close(fd);
-  }
   sodium_memzero(sk, sizeof(sk));
 
-  std::cout << "Keys generated securely\n";
-
+  std::cout << "Key stored in macOS Keychain\n";
   return 0;
 }

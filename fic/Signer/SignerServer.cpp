@@ -1,4 +1,5 @@
 #include "SignerClient.cpp"
+#include "fic/Key/Providers/KeyChainProvider.cpp"
 #include <array>
 #include <cerrno>
 #include <csignal>
@@ -7,11 +8,10 @@
 #include <sodium.h>
 #include <stdexcept>
 #include <string>
-#include <vector>
-
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <vector>
 
 static const char *SOCKET_PATH = "/tmp/fic_file_signer.sock";
 static const char *SECRET_KEY_FILE = "secret.key";
@@ -55,7 +55,9 @@ int main() {
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
 
-  auto secret_key = load_secret_key();
+  KeyChainProvider kp{};
+  std::array<uint8_t, crypto_sign_SECRETKEYBYTES> sk;
+  kp.load_secret_key(sk);
 
   server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_fd < 0) {
@@ -107,7 +109,7 @@ int main() {
       // sign
       std::array<uint8_t, crypto_sign_BYTES> sig{};
       crypto_sign_detached(sig.data(), nullptr, msg.data(), msg.size(),
-                           secret_key.data());
+                           sk.data());
 
       // send signature
       send_all(client, sig.data(), sig.size());

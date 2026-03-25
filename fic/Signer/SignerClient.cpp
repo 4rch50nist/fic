@@ -56,31 +56,33 @@ request_signature_from_host(const std::vector<uint8_t> &message,
   close(sock);
   return sig;
 }
-bool verify_signature(const std::vector<uint8_t> &msg,
-                      const std::array<uint8_t, 64> &sig) {
-
-  unsigned char public_key[crypto_sign_PUBLICKEYBYTES];
-
+bool load_public_key(std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> &pk) {
   FILE *f = fopen("public.key", "rb");
   if (!f) {
     std::printf("error: could not open public key\n");
     return false;
   }
 
-  if (fread(public_key, 1, sizeof(public_key), f) != sizeof(public_key)) {
-    std::printf("error: failed to read public key\n");
-    fclose(f);
+  size_t read = fread(pk.data(), 1, pk.size(), f);
+  fclose(f);
+
+  if (read != pk.size()) {
+    std::printf("error: invalid public key size\n");
     return false;
   }
 
-  fclose(f);
-
-  int result = crypto_sign_verify_detached(sig.data(), msg.data(), msg.size(),
-                                           public_key);
-
-  return result == 0; // 0 = valid
+  return true;
 }
-bool keys_exist() {
-  return std::filesystem::exists("public.key") &&
-         std::filesystem::exists("secret.key");
+
+bool verify_signature(const std::vector<uint8_t> &msg,
+                      const std::array<uint8_t, 64> &sig) {
+
+  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk;
+
+  if (!load_public_key(pk)) {
+    return false;
+  }
+
+  return crypto_sign_verify_detached(sig.data(), msg.data(), msg.size(),
+                                     pk.data()) == 0;
 }
