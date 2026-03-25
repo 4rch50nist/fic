@@ -62,6 +62,14 @@ bool write_manifest(const Manifest &m, const std::string &path) {
     }
   }
 
+  // write the signature
+  if (fwrite(m.signature.data(), 1, 64, f) != 64) {
+    std::printf("Writing signature\n");
+    std::fclose(f);
+    std::remove(tmp_path.c_str());
+    return false;
+  }
+
   // flush userspace → kernel
   std::fflush(f);
 
@@ -128,6 +136,12 @@ std::optional<Manifest> read_manifest(const std::string &path) {
     }
   }
 
+  // read signature
+  if (std::fread(&m.signature, sizeof(m.signature), 1, f) != 1) {
+    std::fclose(f);
+    return std::nullopt;
+  }
+
   std::fclose(f);
   return m;
 }
@@ -166,4 +180,22 @@ std::vector<size_t> compare_manifest(const Manifest &old_manifest,
   }
 
   return changed;
+}
+std::vector<uint8_t> build_signing_message(const ManifestHeader &h) {
+  std::vector<uint8_t> buf;
+
+  auto append = [&](const void *data, size_t len) {
+    const uint8_t *p = reinterpret_cast<const uint8_t *>(data);
+    buf.insert(buf.end(), p, p + len);
+  };
+
+  append(&h.magic, sizeof(h.magic));
+  append(&h.version, sizeof(h.version));
+  append(&h.algo, sizeof(h.algo));
+  append(&h.chunk_size, sizeof(h.chunk_size));
+  append(&h.num_chunks, sizeof(h.num_chunks));
+  append(h.root_hash.data(), h.root_hash.size());
+  append(&h.generated_at, sizeof(h.generated_at));
+
+  return buf;
 }
