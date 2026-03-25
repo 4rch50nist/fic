@@ -129,11 +129,7 @@ int main(int argc, char **argv) {
   t6 = Clock::now();
   auto old_manifest = read_manifest(manifest_path);
   t7 = Clock::now();
-  if (!keys_exist()) {
-    std::printf("error: missing keys (public.key / secret.key)\n");
-    std::printf("please run: fic-keygen\n");
-    return RC_ERROR;
-  }
+
   if (!old_manifest) {
     // first run
     std::printf("no manifest found — first run\n");
@@ -218,6 +214,15 @@ int main(int argc, char **argv) {
       // update manifest
       auto new_manifest = generate_manifest(file_path, pipeline_result.chunks,
                                             new_tree.root(), algo);
+      auto new_msg = build_signing_message(new_manifest.header);
+
+      try {
+        auto sig = request_signature_from_host(new_msg, UX_SOCKET_FILE);
+        new_manifest.signature = sig;
+      } catch (const std::exception &e) {
+        std::printf("error: signing failed: %s\n", e.what());
+        return RC_ERROR;
+      }
 
       t8 = Clock::now();
       if (!write_manifest(new_manifest, manifest_path)) {
