@@ -76,6 +76,7 @@ inline StreamResult stream_chunk(const char *path, ChunkCallback on_chunk) {
       /// something) that should not have happened has happened. So we must
       /// abort and let the caller know that we couldnt complete the request
       /// because something went wrong in their function.
+      // printf("Read chunk:%llu\n", chunk_id);
       if (!on_chunk(std::move(chunk)))
         return StreamResult::Aborted;
 

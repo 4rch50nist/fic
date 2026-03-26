@@ -27,7 +27,7 @@ public:
 
     q.push(std::move(item));
     lock.unlock();
-    cv_push.notify_one();
+    cv_pop.notify_one();
   }
 
   std::optional<T> pop() {
@@ -40,7 +40,7 @@ public:
     T item = std::move(q.front());
     q.pop();
     lock.unlock();
-    cv_pop.notify_one();
+    cv_push.notify_one();
     return item;
   }
 
