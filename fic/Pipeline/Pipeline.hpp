@@ -16,7 +16,7 @@ run_pipeline(const char *path, const IHashEngine &engine,
   if (!num_workers)
     num_workers = 4;
 
-  ThreadSafeQueue<Chunk> queue(64);
+  ThreadSafeQueue<Chunk> queue(128);
   std::vector<std::vector<Chunk>> per_worker_results(num_workers);
 
   std::vector<std::thread> workers;
