@@ -11,7 +11,7 @@ public:
             std::array<uint8_t, 32> &out) const override {
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     unsigned int len = 32;
-    EVP_DigestInit_ex(ctx, EVP_blake2b512(), nullptr);
+    EVP_DigestInit_ex(ctx, EVP_blake2s256(), nullptr);
     EVP_DigestUpdate(ctx, data, size);
     EVP_DigestFinal_ex(ctx, out.data(), &len);
     EVP_MD_CTX_free(ctx);

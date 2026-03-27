@@ -1,5 +1,7 @@
 #include "SignerClient.cpp"
-#include "fic/Key/Providers/KeyChainProvider.cpp"
+#include "fic/Key/KeyFactory.hpp"
+#include <CoreFoundation/CoreFoundation.h>
+#include <Security/Security.h>
 #include <array>
 #include <cerrno>
 #include <csignal>
@@ -7,14 +9,13 @@
 #include <iostream>
 #include <sodium.h>
 #include <stdexcept>
-#include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
 static const char *SOCKET_PATH = "/tmp/fic_file_signer.sock";
-static const char *SECRET_KEY_FILE = "secret.key";
+static std::atomic<bool> g_key_dirty{false};
 
 static int server_fd = -1;
 
@@ -29,23 +30,22 @@ void signal_handler(int) {
   cleanup();
   std::exit(0);
 }
-
-std::vector<uint8_t> load_secret_key() {
-  FILE *f = fopen(SECRET_KEY_FILE, "rb");
-  if (!f)
-    throw std::runtime_error("failed to open secret.key");
-
-  std::vector<uint8_t> key(crypto_sign_SECRETKEYBYTES);
-
-  if (fread(key.data(), 1, key.size(), f) != key.size()) {
-    fclose(f);
-    throw std::runtime_error("failed to read secret key");
-  }
-
-  fclose(f);
-  return key;
+static OSStatus keychain_callback(SecKeychainEvent event,
+                                  SecKeychainCallbackInfo *info,
+                                  void *context) {
+  (void)event;
+  (void)info;
+  (void)context;
+  printf("[fic-signer] keychain changed — reloading key\n");
+  g_key_dirty.store(true, std::memory_order_release);
+  return noErr;
 }
-
+static void runloop_thread() {
+  SecKeychainAddCallback(keychain_callback,
+                         kSecAddEvent | kSecUpdateEvent | kSecDeleteEvent,
+                         nullptr);
+  CFRunLoopRun();
+}
 int main() {
   if (sodium_init() < 0) {
     std::cerr << "libsodium init failed\n";
@@ -55,9 +55,10 @@ int main() {
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
 
-  KeyChainProvider kp{};
   std::array<uint8_t, crypto_sign_SECRETKEYBYTES> sk;
-  kp.load_secret_key(sk);
+  KeyFactory::create_key_provider()->load_secret_key(sk);
+  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk;
+  crypto_sign_ed25519_sk_to_pk(pk.data(), sk.data());
 
   server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_fd < 0) {

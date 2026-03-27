@@ -1,4 +1,7 @@
-#include "../KeyProvider.cpp"
+#pragma once
+#include "fic/Key/KeyProvider.hpp"
+#include <array>
+#include <cstdint>
 #include <sodium.h>
 
 class FileProvider : public KeyProvider {
@@ -11,6 +14,11 @@ public:
 
     fread(key.data(), 1, key.size(), f);
     fclose(f);
+    return true;
+  }
+  bool generate_secret_key() override { return true; }
+  bool load_public_key(
+      std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> &key) override {
     return true;
   }
 };

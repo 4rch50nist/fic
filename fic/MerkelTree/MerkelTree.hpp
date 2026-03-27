@@ -33,16 +33,18 @@ public:
   /// Merkle Trees are complete binary trees.
   static MerkelTreeData build(const std::vector<Hash32> &leaves,
                               const IHashEngine &engine) {
+
+    /// If empty, return empty root
     if (leaves.empty())
       return MerkelTreeData{{Hash32{}}, 0};
 
+    /// get bit_ceil and the start of leaves;
     size_t pow = std::bit_ceil(leaves.size());
-    size_t total = (pow << 1) - 1;
     size_t leaf_start = pow - 1;
 
     MerkelTreeData tree;
     tree.num_leaves = leaves.size();
-    tree.nodes.resize(total);
+    tree.nodes.resize((pow << 1) - 1);
 
     for (size_t i = 0; i < leaves.size(); i++)
       tree.nodes[i + leaf_start] = hash_leaf(leaves[i], engine);

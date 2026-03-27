@@ -1,7 +1,7 @@
 #pragma once
 #include "../../IHashEngine.hpp"
 #include "../IO/ChunkReader.hpp"
-#include "ThreadSafe.hpp"
+#include "ThreadSafeQueue.hpp"
 #include <algorithm>
 #include <thread>
 
@@ -10,6 +10,7 @@ struct PipelineResult {
   std::vector<Chunk> chunks;
 };
 
+/// Initialises a ThreadSafeQueue with depth of 128 that allows for num_workers.
 inline PipelineResult
 run_pipeline(const char *path, const IHashEngine &engine,
              size_t num_workers = (size_t)std::thread::hardware_concurrency()) {

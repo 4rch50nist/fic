@@ -1,15 +1,15 @@
 #pragma once
 #include "FileGuard.hpp"
+#include <array>
 #include <cstdint>
 #include <cstdio>
-#include <functional>
 #include <memory>
 
 /// A file is broken into Chunks of size CHUNK_SIZE to stream into
 /// a queue of workers ready to digest this and spit out hashes.
 /// A larger chunk size is implies more read time and slightly higher wait time
 /// for the workers (with less idle time incase the reader cannot keep up)
-constexpr size_t CHUNK_SIZE = 8 * 1024 * 1024;
+constexpr size_t CHUNK_SIZE = (1 << 23);
 
 struct Chunk {
   uint64_t chunk_id;
@@ -40,10 +40,6 @@ struct Chunk {
   void release_data() { data.reset(); }
 };
 
-/// Action to perform on each chunk. This takes in a movable
-/// rvalue that the caller then gets ownership of.
-using ChunkCallback = std::function<bool(Chunk &&)>;
-
 /// Ok -> We finished fine
 /// ErrorOpen -> Error while opening file
 /// ErrorLock -> Error while acquiring lock for file
@@ -53,7 +49,8 @@ using ChunkCallback = std::function<bool(Chunk &&)>;
 enum class StreamResult { Ok, ErrorOpen, ErrorLock, ErrorRead, Aborted };
 
 /// streams a vector of chunks from the file given in path.
-inline StreamResult stream_chunk(const char *path, ChunkCallback on_chunk) {
+template <typename F>
+inline StreamResult stream_chunk(const char *path, F &&on_chunk) {
   FileGuard fg{};
   try {
     fg.bind(path);
@@ -63,6 +60,8 @@ inline StreamResult stream_chunk(const char *path, ChunkCallback on_chunk) {
 
   uint64_t chunk_id{0};
   uint64_t offset{0};
+
+  fcntl(fileno(fg.get()), F_RDAHEAD, 1);
 
   while (true) {
     auto buf = std::make_unique<uint8_t[]>(CHUNK_SIZE);
