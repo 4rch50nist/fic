@@ -137,6 +137,8 @@ int main(int argc, char **argv) {
     auto manifest = generate_manifest(file_path, pipeline_result.chunks,
                                       new_tree.root(), algo);
     auto msg = build_signing_message(manifest.header);
+
+    printf("\n");
     try {
       auto sig = request_signature_from_host(msg, UX_SOCKET_FILE);
       manifest.signature = sig;
@@ -173,6 +175,8 @@ int main(int argc, char **argv) {
 
     auto old_tree = MerkelTree::build(old_hashes, *engine);
     auto old_msg = build_signing_message(old_manifest->header);
+
+    printf("\n");
     if (!verify_signature(old_msg, old_manifest->signature)) {
       std::printf("status:    MODIFIED\n");
       std::printf("changed:   Signature is either corrupt or has been changed. "

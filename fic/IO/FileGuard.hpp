@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <sys/file.h>
 
+/// RAII phil.
 class FileGuard {
 private:
   std::FILE *f = nullptr;
@@ -33,6 +34,12 @@ public:
   std::FILE *get() const { return this->f; }
   bool is_open() const { return f != nullptr; }
 
+  /// Bind the path to the file guard. This essentially checks if the file is
+  /// already open. If so it will just return false and this must be handled by
+  /// the caller. In all other cases, it just opens the file with "rb".
+  ///
+  /// If it cannot open it then it throws a runtime error.
+  /// If it cannot acquire a file lock, it throws a runtime error.
   bool bind(const char *path) {
 
     /// if f is already bound, then we should ideally let the caller
@@ -54,6 +61,7 @@ public:
     return true;
   }
 
+  /// Unbinds the file by first unlocking the resource and then closing it.
   void unbind() {
     if (f) {
       flock(fileno(f), LOCK_UN);

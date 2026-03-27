@@ -1,5 +1,7 @@
 #include "Manifest.hpp"
+#include <unordered_set>
 
+/// Generates a Manifest according to some schema.
 Manifest generate_manifest(const std::string &file_path,
                            const std::vector<Chunk> &chunks, const Hash32 &root,
                            HashAlgo algo) {
@@ -14,7 +16,6 @@ Manifest generate_manifest(const std::string &file_path,
 
   // magic and version already defaulted in ManifestHeader struct
   // no need to set them here
-
   m.chunks.reserve(chunks.size());
   for (auto &chunk : chunks) {
     m.chunks.push_back(ManifestChunk{.chunk_id = chunk.chunk_id,
@@ -26,7 +27,12 @@ Manifest generate_manifest(const std::string &file_path,
   return m;
 }
 
+/// Write the manifest to the .manifest file. This will return false if
+/// it cannot write all the Manifest information to the file, or
+/// If it cannot open the file at the path,
 bool write_manifest(const Manifest &m, const std::string &path) {
+
+  /// First we write to some temporary file.
   std::string tmp_path = path + ".tmp";
 
   std::FILE *f = std::fopen(tmp_path.c_str(), "wb");

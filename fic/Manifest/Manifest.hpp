@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 #include <unistd.h>
-#include <unordered_set>
 #include <vector>
 
 static constexpr uint32_t MANIFEST_MAGIC = 0xF1C0FFEE;
