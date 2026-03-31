@@ -1,39 +1,36 @@
 #include "Manifest.hpp"
+#include <unordered_map>
 #include <unordered_set>
+#include <ctime>
 
-/// Generates a Manifest according to some schema.
 Manifest generate_manifest(const std::string &file_path,
                            const std::vector<Chunk> &chunks, const Hash32 &root,
-                           HashAlgo algo) {
+                           const HashAlgo algo) {
   Manifest m;
 
   m.file_path = file_path;
   m.header.algo = algo;
   m.header.num_chunks = chunks.size();
   m.header.chunk_size = CHUNK_SIZE;
-  m.header.generated_at = (uint64_t)std::time(nullptr);
+  m.header.generated_at = static_cast<uint64_t>(std::time(nullptr));
   m.header.root_hash = root;
 
   // magic and version already defaulted in ManifestHeader struct
   // no need to set them here
+
   m.chunks.reserve(chunks.size());
   for (auto &chunk : chunks) {
     m.chunks.push_back(ManifestChunk{.chunk_id = chunk.chunk_id,
                                      .offset = chunk.offset,
-                                     .size = (uint64_t)chunk.size,
+                                     .size = static_cast<uint>(chunk.size),
                                      .hash = chunk.hash});
   }
 
   return m;
 }
 
-/// Write the manifest to the .manifest file. This will return false if
-/// it cannot write all the Manifest information to the file, or
-/// If it cannot open the file at the path,
 bool write_manifest(const Manifest &m, const std::string &path) {
-
-  /// First we write to some temporary file.
-  std::string tmp_path = path + ".tmp";
+  const std::string tmp_path = path + ".tmp";
 
   std::FILE *f = std::fopen(tmp_path.c_str(), "wb");
   if (!f)
@@ -47,7 +44,7 @@ bool write_manifest(const Manifest &m, const std::string &path) {
   }
 
   // write path length + path
-  uint16_t path_len = (uint16_t)m.file_path.size();
+  auto path_len = static_cast<uint16_t>(m.file_path.size());
   if (std::fwrite(&path_len, sizeof(uint16_t), 1, f) != 1) {
     std::fclose(f);
     std::remove(tmp_path.c_str());
@@ -68,19 +65,16 @@ bool write_manifest(const Manifest &m, const std::string &path) {
     }
   }
 
-  // write the signature
-  if (fwrite(m.signature.data(), 1, 64, f) != 64) {
-    std::printf("Writing signature\n");
-    std::fclose(f);
-    std::remove(tmp_path.c_str());
-    return false;
-  }
-
   // flush userspace → kernel
   std::fflush(f);
 
+
+  #ifdef _WIN32
+  _commit(fileno(f)); 
+  #else
   // flush kernel → disk
   fsync(fileno(f));
+  #endif
 
   std::fclose(f);
 
@@ -142,12 +136,6 @@ std::optional<Manifest> read_manifest(const std::string &path) {
     }
   }
 
-  // read signature
-  if (std::fread(&m.signature, sizeof(m.signature), 1, f) != 1) {
-    std::fclose(f);
-    return std::nullopt;
-  }
-
   std::fclose(f);
   return m;
 }
@@ -169,11 +157,8 @@ std::vector<size_t> compare_manifest(const Manifest &old_manifest,
   for (auto &c : new_chunks) {
     seen.insert(c.chunk_id);
     auto it = old_hashes.find(c.chunk_id);
-    if (it == old_hashes.end()) {
+    if (it == old_hashes.end() || it->second != c.hash) {
       // new chunk — file grew
-      changed.push_back(c.chunk_id);
-    } else if (it->second != c.hash) {
-      // hash differs — content changed
       changed.push_back(c.chunk_id);
     }
     // hash matches — unchanged, skip
@@ -181,17 +166,18 @@ std::vector<size_t> compare_manifest(const Manifest &old_manifest,
 
   // check old chunks not in new — file shrank
   for (auto &c : old_manifest.chunks) {
-    if (seen.find(c.chunk_id) == seen.end())
+    if (!seen.contains(c.chunk_id))
       changed.push_back(c.chunk_id);
   }
 
   return changed;
 }
+
 std::vector<uint8_t> build_signing_message(const ManifestHeader &h) {
   std::vector<uint8_t> buf;
 
   auto append = [&](const void *data, size_t len) {
-    const uint8_t *p = reinterpret_cast<const uint8_t *>(data);
+    const auto *p = static_cast<const uint8_t *>(data);
     buf.insert(buf.end(), p, p + len);
   };
 

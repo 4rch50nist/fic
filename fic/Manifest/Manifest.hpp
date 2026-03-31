@@ -1,12 +1,10 @@
 #pragma once
 
-#include "../IO/ChunkReader.hpp"
-#include "../MerkelTree/MerkelTreeData.hpp"
+#include "fic/IO/ChunkReader.cpp"
+#include "fic/MerkleTree/MerkleTree.hpp"
 #include <cstdint>
-#include <ctime>
 #include <optional>
 #include <string>
-#include <unistd.h>
 #include <vector>
 
 static constexpr uint32_t MANIFEST_MAGIC = 0xF1C0FFEE;

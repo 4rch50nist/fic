@@ -7,17 +7,17 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-static void send_all(int sock, const uint8_t *data, size_t len) {
+void send_all(const int sock, const uint8_t *data, size_t len) {
   size_t total = 0;
   while (total < len) {
-    ssize_t sent = write(sock, data + total, len - total);
+    const ssize_t sent = write(sock, data + total, len - total);
     if (sent <= 0)
       throw std::runtime_error("socket write failed");
     total += static_cast<size_t>(sent);
   }
 }
 
-static void recv_all(int sock, uint8_t *data, size_t len) {
+void recv_all(const int sock, uint8_t *data, size_t len) {
   size_t total = 0;
   while (total < len) {
     ssize_t recvd = read(sock, data + total, len - total);
@@ -37,12 +37,12 @@ request_signature_from_host(const std::vector<uint8_t> &message,
   sockaddr_un addr{};
   addr.sun_family = AF_UNIX;
   strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
-  socklen_t len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) +
+  auto len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) +
                                          strlen(addr.sun_path));
 
-  if (connect(sock, (sockaddr *)&addr, len) < 0) {
+  if (connect(sock, reinterpret_cast<sockaddr*>(&addr), len) < 0) {
     close(sock);
-    std::string("connect failed: ") + std::strerror(errno);
+    throw std::runtime_error("failed to connect to socket");
   }
 
   len = static_cast<socklen_t>(message.size());
@@ -60,7 +60,7 @@ request_signature_from_host(const std::vector<uint8_t> &message,
 bool verify_signature(const std::vector<uint8_t> &msg,
                       const std::array<uint8_t, 64> &sig) {
 
-  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk;
+  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk{};
   if (KeyFactory::create_key_provider()->load_public_key(pk)) {
     return false;
   }

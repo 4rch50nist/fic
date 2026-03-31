@@ -1,65 +1,17 @@
 #pragma once
-#include "../../IHashEngine.hpp"
-#include "../IO/ChunkReader.hpp"
-#include "ThreadSafeQueue.hpp"
-#include <algorithm>
-#include <thread>
+#include <vector>
+#include "fic/IO/ChunkReader.hpp"
 
-struct PipelineResult {
-  StreamResult streamResult;
-  std::vector<Chunk> chunks;
+struct PipelineResult
+{
+    StreamResult streamResult;
+    std::vector<Chunk> chunks;
+
+    PipelineResult(const StreamResult &streamResult, std::vector<Chunk> &chunks): streamResult{streamResult}, chunks{std::move(chunks)} { }
 };
 
-/// Initialises a ThreadSafeQueue with depth of 128 that allows for num_workers.
-inline PipelineResult
-run_pipeline(const char *path, const IHashEngine &engine,
-             size_t num_workers = (size_t)std::thread::hardware_concurrency()) {
-  if (!num_workers)
-    num_workers = 4;
+PipelineResult
+run_pipeline(const char *, const IHashEngine &,
+             size_t num_workers = std::thread::hardware_concurrency());
 
-  ThreadSafeQueue<Chunk> queue(128);
-  std::vector<std::vector<Chunk>> per_worker_results(num_workers);
 
-  std::vector<std::thread> workers;
-  workers.reserve(num_workers);
-
-  for (size_t i = 0; i < num_workers; i++) {
-    workers.emplace_back([&, i]() {
-      auto &local = per_worker_results[i];
-      while (true) {
-        auto item = queue.pop();
-        if (!item)
-          break;
-
-        engine.hash(item->data.get(), item->size, item->hash);
-        item->release_data();
-        local.push_back(std::move(*item));
-      }
-    });
-  }
-
-  StreamResult status = stream_chunk(path, [&](Chunk &&c) -> bool {
-    queue.push(std::move(c));
-    return true;
-  });
-  queue.close();
-  for (auto &w : workers)
-    w.join();
-
-  std::vector<Chunk> results;
-  results.reserve([&] {
-    size_t n = 0;
-    for (auto &v : per_worker_results)
-      n += v.size();
-    return n;
-  }());
-  for (auto &v : per_worker_results)
-    for (auto &c : v)
-      results.push_back(std::move(c));
-
-  std::sort(results.begin(), results.end(), [](const Chunk &a, const Chunk &b) {
-    return a.chunk_id < b.chunk_id;
-  });
-
-  return PipelineResult{.streamResult = status, .chunks = std::move(results)};
-}

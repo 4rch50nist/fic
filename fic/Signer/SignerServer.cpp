@@ -1,9 +1,6 @@
-#include "SignerClient.cpp"
+#include "fic/Signer/SignerClient.hpp"
 #include "fic/Key/KeyFactory.hpp"
-#include <CoreFoundation/CoreFoundation.h>
-#include <Security/Security.h>
 #include <array>
-#include <cerrno>
 #include <csignal>
 #include <cstring>
 #include <iostream>
@@ -13,38 +10,22 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <vector>
+#include <string_view>
 
-static const char *SOCKET_PATH = "/tmp/fic_file_signer.sock";
-static std::atomic<bool> g_key_dirty{false};
+std::string_view SOCKET_PATH = "/tmp/fic_file_signer.sock";
 
 static int server_fd = -1;
 
 void cleanup() {
   if (server_fd >= 0)
     close(server_fd);
-  unlink(SOCKET_PATH);
+  unlink(SOCKET_PATH.data());
 }
 
 void signal_handler(int) {
   std::cout << "\nShutting down signer...\n";
   cleanup();
   std::exit(0);
-}
-static OSStatus keychain_callback(SecKeychainEvent event,
-                                  SecKeychainCallbackInfo *info,
-                                  void *context) {
-  (void)event;
-  (void)info;
-  (void)context;
-  printf("[fic-signer] keychain changed — reloading key\n");
-  g_key_dirty.store(true, std::memory_order_release);
-  return noErr;
-}
-static void runloop_thread() {
-  SecKeychainAddCallback(keychain_callback,
-                         kSecAddEvent | kSecUpdateEvent | kSecDeleteEvent,
-                         nullptr);
-  CFRunLoopRun();
 }
 int main() {
   if (sodium_init() < 0) {
@@ -55,9 +36,9 @@ int main() {
   signal(SIGINT, signal_handler);
   signal(SIGTERM, signal_handler);
 
-  std::array<uint8_t, crypto_sign_SECRETKEYBYTES> sk;
+  std::array<uint8_t, crypto_sign_SECRETKEYBYTES> sk{};
   KeyFactory::create_key_provider()->load_secret_key(sk);
-  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk;
+  std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk{};
   crypto_sign_ed25519_sk_to_pk(pk.data(), sk.data());
 
   server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -68,11 +49,11 @@ int main() {
 
   sockaddr_un addr{};
   addr.sun_family = AF_UNIX;
-  std::strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
+  std::strncpy(addr.sun_path, SOCKET_PATH.data(), sizeof(addr.sun_path) - 1);
 
-  unlink(SOCKET_PATH); // remove old socket
+  unlink(SOCKET_PATH.data()); // remove old socket
 
-  if (bind(server_fd, (sockaddr *)&addr, sizeof(addr)) < 0) {
+  if (bind(server_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
     perror("bind");
     cleanup();
     return 1;
@@ -118,10 +99,6 @@ int main() {
     } catch (const std::exception &e) {
       std::cerr << "client error: " << e.what() << "\n";
     }
-
-    close(client);
+    cleanup();
   }
-
-  cleanup();
-  return 0;
 }

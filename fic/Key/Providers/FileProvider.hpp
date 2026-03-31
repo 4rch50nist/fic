@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <sodium.h>
+#include<stdexcept>
 
 class FileProvider : public KeyProvider {
 public:

@@ -2,12 +2,11 @@
 #include "fic/Engines/SHA256Engine.hpp"
 #include "fic/Engines/SHA512Engine.hpp"
 #include "fic/Manifest/Manifest.hpp"
-#include "fic/MerkelTree/MerkelTree.hpp"
-#include "fic/Pipeline/Pipeline.hpp"
+#include "fic/MerkleTree/MerkleTree.hpp"
+#include "fic/Pipeline/Pipeline.cpp"
 #include "fic/Signer/SignerClient.hpp"
 #include <chrono>
 #include <cstdio>
-#include <cstdlib>
 #include <string>
 
 static const std::string UX_SOCKET_FILE = "/tmp/fic_file_signer.sock";
@@ -122,7 +121,7 @@ int main(int argc, char **argv) {
 
   // build merkle tree
   t4 = Clock::now();
-  auto new_tree = MerkelTree::build(hashes, *engine);
+  auto new_tree = MerkleTree::build(hashes, *engine);
   t5 = Clock::now();
 
   // read existing manifest
@@ -173,7 +172,7 @@ int main(int argc, char **argv) {
     for (auto &c : old_manifest->chunks)
       old_hashes.push_back(c.hash);
 
-    auto old_tree = MerkelTree::build(old_hashes, *engine);
+    auto old_tree = MerkleTree::build(old_hashes, *engine);
     auto old_msg = build_signing_message(old_manifest->header);
 
     printf("\n");
@@ -184,7 +183,7 @@ int main(int argc, char **argv) {
       return RC_ERROR;
     }
     if (verify_signature(old_msg, old_manifest->signature) &&
-        MerkelTree::verify(old_tree, new_tree)) {
+        MerkleTree::verify(old_tree, new_tree)) {
       // file unchanged
       std::printf("status:   OK — file unchanged\n");
       std::printf("root:     ");
@@ -196,7 +195,7 @@ int main(int argc, char **argv) {
       return RC_OK;
     } else {
       // file modified — find exactly what changed
-      auto diffs = MerkelTree::diff(old_tree, new_tree);
+      auto diffs = MerkleTree::diff(old_tree, new_tree);
 
       std::printf("status:   MODIFIED\n");
       std::printf("changed:  %zu chunk(s)\n", diffs.size());
@@ -205,8 +204,8 @@ int main(int argc, char **argv) {
       for (auto &d : diffs) {
         auto &old_chunk = old_manifest->chunks[d.chunk_id];
         std::printf("  chunk %zu\n", d.chunk_id);
-        std::printf("    offset: %llu\n", (unsigned long long)old_chunk.offset);
-        std::printf("    size:   %llu\n", (unsigned long long)old_chunk.size);
+        std::printf("    offset: %llu\n", static_cast<unsigned long long>(old_chunk.offset));
+        std::printf("    size:   %llu\n", static_cast<unsigned long long>(old_chunk.size));
         std::printf("    old:    ");
         print_hash(d.old_hash);
         std::printf("\n");

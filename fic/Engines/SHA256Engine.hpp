@@ -4,10 +4,7 @@
 
 class SHA256Engine : public IHashEngine {
 public:
-  const char *name() const override { return "SHA256"; }
-
+  [[nodiscard]] const char *name() const override;
   void hash(const uint8_t *data, size_t size,
-            std::array<uint8_t, 32> &out) const override {
-    SHA256(data, size, out.data());
-  }
+            std::array<uint8_t, 32> &out) const override;
 };
