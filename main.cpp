@@ -1,10 +1,10 @@
-#include "fic/Engines/BLAKE2bEngine.hpp"
-#include "fic/Engines/SHA256Engine.hpp"
-#include "fic/Engines/SHA512Engine.hpp"
-#include "fic/Manifest/Manifest.hpp"
-#include "fic/MerkleTree/MerkleTree.hpp"
-#include "fic/Pipeline/Pipeline.cpp"
-#include "fic/Signer/SignerClient.hpp"
+#include "include/fic/Engines/BLAKE2bEngine.hpp"
+#include "include/fic/Engines/SHA256Engine.hpp"
+#include "include/fic/Engines/SHA512Engine.hpp"
+#include "include/fic/Manifest/Manifest.hpp"
+#include "include/fic/MerkleTree/MerkleTree.hpp"
+#include "include/fic/Pipeline/Pipeline.hpp"
+#include "include/fic/Signer/SignerClient.hpp"
 #include <chrono>
 #include <cstdio>
 #include <string>

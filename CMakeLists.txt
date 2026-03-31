@@ -12,7 +12,7 @@ pkg_check_modules(SODIUM REQUIRED libsodium)
 
 # ---- core library (all project code) ----
 file(GLOB_RECURSE CORE_SRC
-        fic/*.cpp
+        src/fic/*.cpp
 )
 
 add_library(core ${CORE_SRC} fic)
