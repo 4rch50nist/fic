@@ -1,7 +1,8 @@
 #include "include/fic/Manifest/Manifest.hpp"
+#include <ctime>
+#include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
-#include <ctime>
 
 Manifest generate_manifest(const std::string &file_path,
                            const std::vector<Chunk> &chunks, const Hash32 &root,
@@ -36,45 +37,37 @@ bool write_manifest(const Manifest &m, const std::string &path) {
   if (!f)
     return false;
 
-  // write header
-  if (std::fwrite(&m.header, sizeof(ManifestHeader), 1, f) != 1) {
+  auto bounce_back = [&f, &tmp_path]() -> bool {
     std::fclose(f);
     std::remove(tmp_path.c_str());
     return false;
-  }
+  };
+
+  // write header
+  if (std::fwrite(&m.header, sizeof(ManifestHeader), 1, f) != 1)
+    return bounce_back();
 
   // write path length + path
   auto path_len = static_cast<uint16_t>(m.file_path.size());
-  if (std::fwrite(&path_len, sizeof(uint16_t), 1, f) != 1) {
-    std::fclose(f);
-    std::remove(tmp_path.c_str());
-    return false;
-  }
-  if (std::fwrite(m.file_path.c_str(), sizeof(char), path_len, f) != path_len) {
-    std::fclose(f);
-    std::remove(tmp_path.c_str());
-    return false;
-  }
+  if (std::fwrite(&path_len, sizeof(uint16_t), 1, f) != 1)
+    return bounce_back();
+  if (std::fwrite(m.file_path.c_str(), sizeof(char), path_len, f) != path_len)
+    return bounce_back();
+
+  // write signature
+  if (std::fwrite(m.signature.data(), sizeof(uint8_t), m.signature.size(), f) !=
+      m.signature.size())
+    return bounce_back();
 
   // write chunks
-  for (auto &c : m.chunks) {
-    if (std::fwrite(&c, sizeof(ManifestChunk), 1, f) != 1) {
-      std::fclose(f);
-      std::remove(tmp_path.c_str());
-      return false;
-    }
-  }
+  for (auto &c : m.chunks)
+    if (std::fwrite(&c, sizeof(ManifestChunk), 1, f) != 1)
+      return bounce_back();
 
   // flush userspace → kernel
   std::fflush(f);
 
-
-  #ifdef _WIN32
-  _commit(fileno(f)); 
-  #else
-  // flush kernel → disk
   fsync(fileno(f));
-  #endif
 
   std::fclose(f);
 
@@ -123,6 +116,12 @@ std::optional<Manifest> read_manifest(const std::string &path) {
   // read path string
   m.file_path.resize(path_len);
   if (std::fread(m.file_path.data(), sizeof(char), path_len, f) != path_len) {
+    std::fclose(f);
+    return std::nullopt;
+  }
+  // read signature
+  if (std::fread(m.signature.data(), sizeof(uint8_t), m.signature.size(), f) !=
+      m.signature.size()) {
     std::fclose(f);
     return std::nullopt;
   }

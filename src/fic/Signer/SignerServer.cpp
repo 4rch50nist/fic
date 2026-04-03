@@ -1,18 +1,17 @@
-#include "include/fic/Signer/SignerClient.hpp"
-#include "include/fic/Key/KeyFactory.hpp"
 #include "include/fic/Signer/SignerServer.hpp"
+#include "include/fic/Key/KeyFactory.hpp"
+#include "include/fic/Signer/SignerClient.hpp"
 #include <array>
 #include <csignal>
 #include <cstring>
 #include <iostream>
 #include <sodium.h>
 #include <stdexcept>
+#include <string_view>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <vector>
-#include <string_view>
-
 
 std::string_view SOCKET_PATH = "/tmp/fic_file_signer.sock";
 
@@ -55,7 +54,7 @@ int main() {
 
   unlink(SOCKET_PATH.data()); // remove old socket
 
-  if (bind(server_fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+  if (bind(server_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
     perror("bind");
     cleanup();
     return 1;
@@ -101,6 +100,6 @@ int main() {
     } catch (const std::exception &e) {
       std::cerr << "client error: " << e.what() << "\n";
     }
-    cleanup();
+    close(client);
   }
 }

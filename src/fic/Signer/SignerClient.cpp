@@ -1,6 +1,7 @@
 #include "include/fic/Signer/SignerClient.hpp"
 #include "include/fic/Key/KeyFactory.hpp"
 #include <cstring>
+#include <iostream>
 #include <sodium.h>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -38,9 +39,9 @@ request_signature_from_host(const std::vector<uint8_t> &message,
   addr.sun_family = AF_UNIX;
   strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
   auto len = static_cast<socklen_t>(offsetof(sockaddr_un, sun_path) +
-                                         strlen(addr.sun_path));
+                                    strlen(addr.sun_path));
 
-  if (connect(sock, reinterpret_cast<sockaddr*>(&addr), len) < 0) {
+  if (connect(sock, reinterpret_cast<sockaddr *>(&addr), len) < 0) {
     close(sock);
     throw std::runtime_error("failed to connect to socket");
   }
@@ -61,7 +62,7 @@ bool verify_signature(const std::vector<uint8_t> &msg,
                       const std::array<uint8_t, 64> &sig) {
 
   std::array<uint8_t, crypto_sign_PUBLICKEYBYTES> pk{};
-  if (KeyFactory::create_key_provider()->load_public_key(pk)) {
+  if (!KeyFactory::create_key_provider()->load_public_key(pk)) {
     return false;
   }
 

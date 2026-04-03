@@ -34,6 +34,10 @@ bool KeyChainProvider::load_secret_key(
 
   std::memcpy(out.data(), data, length);
   SecKeychainItemFreeContent(nullptr, data);
+  std::cout << "Loaded SK prefix: ";
+  for (int i = 0; i < 8; ++i)
+    printf("%02x", out[i]);
+  printf("\n");
 
   return true;
 }
@@ -41,7 +45,7 @@ bool KeyChainProvider::load_secret_key(
 bool KeyChainProvider::generate_secret_key() {
   std::array<unsigned char, crypto_sign_PUBLICKEYBYTES> pk{};
   std::array<unsigned char, crypto_sign_SECRETKEYBYTES> sk{};
-
+  std::cout << "GENERATING NEW KEY\n";
   if (crypto_sign_keypair(pk.data(), sk.data()) != 0) {
     throw std::runtime_error("key generation failed");
   }
@@ -89,6 +93,10 @@ bool KeyChainProvider::load_public_key(
   }
 
   crypto_sign_ed25519_sk_to_pk(pk.data(), sk.data());
+  for (auto b : pk) {
+    printf("%02x", b);
+  }
+  printf("\n");
   sodium_memzero(sk.data(), sk.size());
   return true;
 }

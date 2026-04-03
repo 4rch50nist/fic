@@ -12,6 +12,5 @@ bool verify_signature(const std::vector<uint8_t> &msg,
                       const std::array<uint8_t, 64> &sig);
 bool keys_exist();
 
-
-void recv_all(int , uint8_t *, size_t );
-void send_all(int, uint8_t *, size_t );
+void recv_all(const int, uint8_t *, size_t);
+void send_all(const int, const uint8_t *, size_t);
