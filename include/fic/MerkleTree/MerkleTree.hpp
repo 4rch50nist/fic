@@ -1,10 +1,9 @@
 #pragma once
-#include <vector> 
-#include <cstdint> 
-#include "IHashEngine.hpp"
-#include <cstddef>
+#include "include/fic/Engines/IHashEngine.hpp"
 #include <array>
-
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 using Hash32 = std::array<uint8_t, 32>;
 
@@ -17,14 +16,18 @@ struct Diff {
 };
 
 struct MerkelTreeData {
-    std::vector<Hash32> nodes;
-    size_t num_leaves;
+  std::vector<Hash32> nodes;
+  size_t num_leaves;
 
-    [[nodiscard]] Hash32 root() const { return nodes.empty() ? Hash32{} : nodes[0]; }
+  [[nodiscard]] Hash32 root() const {
+    return nodes.empty() ? Hash32{} : nodes[0];
+  }
 
-    [[nodiscard]] size_t leaf_start() const { return nodes.size() >> 1; }
+  [[nodiscard]] size_t leaf_start() const { return nodes.size() >> 1; }
 
-    [[nodiscard]] Hash32 leaf_at(const size_t &i) const { return nodes[leaf_start() + i]; }
+  [[nodiscard]] Hash32 leaf_at(const size_t &i) const {
+    return nodes[leaf_start() + i];
+  }
 };
 
 ///
@@ -39,24 +42,17 @@ struct MerkelTreeData {
 /// In general though, for odd leafs we use the simpler strategy of
 /// even-duplication rather than premature promotion.
 ///
-class MerkleTree{ 
-    public:
-      static MerkelTreeData build(const std::vector<Hash32> &,
-                              const IHashEngine &); 
-    static bool verify(const MerkelTreeData &,
-                     const MerkelTreeData &);
+class MerkleTree {
+public:
+  static MerkelTreeData build(const std::vector<Hash32> &, const IHashEngine &);
+  static bool verify(const MerkelTreeData &, const MerkelTreeData &);
 
-    static std::vector<Diff> diff(const MerkelTreeData &,
-                                const MerkelTreeData &); 
+  static std::vector<Diff> diff(const MerkelTreeData &, const MerkelTreeData &);
 
-    private:
-    static Hash32 hash_leaf(const Hash32 &, const IHashEngine &);
-    static void walk(const MerkelTreeData &,
-                   const MerkelTreeData &, size_t ,
+private:
+  static Hash32 hash_leaf(const Hash32 &, const IHashEngine &);
+  static void walk(const MerkelTreeData &, const MerkelTreeData &, size_t,
                    std::vector<Diff> &);
 
-    static Hash32 combine(const Hash32 &, const Hash32 &,
-                        const IHashEngine &);
-
-    
-}; 
+  static Hash32 combine(const Hash32 &, const Hash32 &, const IHashEngine &);
+};
