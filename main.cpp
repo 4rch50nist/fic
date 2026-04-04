@@ -204,8 +204,10 @@ int main(int argc, char **argv) {
       for (auto &d : diffs) {
         auto &old_chunk = old_manifest->chunks[d.chunk_id];
         std::printf("  chunk %zu\n", d.chunk_id);
-        std::printf("    offset: %llu\n", static_cast<unsigned long long>(old_chunk.offset));
-        std::printf("    size:   %llu\n", static_cast<unsigned long long>(old_chunk.size));
+        std::printf("    offset: %llu\n",
+                    static_cast<unsigned long long>(old_chunk.offset));
+        std::printf("    size:   %llu\n",
+                    static_cast<unsigned long long>(old_chunk.size));
         std::printf("    old:    ");
         print_hash(d.old_hash);
         std::printf("\n");

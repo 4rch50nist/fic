@@ -34,10 +34,6 @@ bool KeyChainProvider::load_secret_key(
 
   std::memcpy(out.data(), data, length);
   SecKeychainItemFreeContent(nullptr, data);
-  std::cout << "Loaded SK prefix: ";
-  for (int i = 0; i < 8; ++i)
-    printf("%02x", out[i]);
-  printf("\n");
 
   return true;
 }
