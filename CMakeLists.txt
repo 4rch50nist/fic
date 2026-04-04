@@ -4,6 +4,7 @@ project(FileIntegrityChecker LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMAND ON)
 
 # ---- dependencies ----
 find_package(OpenSSL REQUIRED)
@@ -51,7 +52,7 @@ endif()
 add_executable(fic main.cpp)
 target_link_libraries(fic PRIVATE core OpenSSL::SSL)
 
-add_executable(fic-signer src/fic/Signer/SignerServer.cpp)
+add_executable(fic-signer src/fic/Signer/main.cpp)
 target_link_libraries(fic-signer PRIVATE core)
 
 add_executable(fic-keygen src/fic/Key/KeyGenerator.cpp)

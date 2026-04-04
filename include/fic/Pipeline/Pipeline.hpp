@@ -1,19 +1,17 @@
 #pragma once
-#include <vector>
+#include "include/fic/Engines/IHashEngine.hpp"
 #include "include/fic/IO/ChunkReader.hpp"
-#include "IHashEngine.hpp"
 #include <thread>
+#include <vector>
 
-struct PipelineResult
-{
-    StreamResult streamResult;
-    std::vector<Chunk> chunks;
+struct PipelineResult {
+  StreamResult streamResult;
+  std::vector<Chunk> chunks;
 
-    PipelineResult(const StreamResult &streamResult, std::vector<Chunk> &chunks): streamResult{streamResult}, chunks{std::move(chunks)} { }
+  PipelineResult(const StreamResult &streamResult, std::vector<Chunk> &chunks)
+      : streamResult{streamResult}, chunks{std::move(chunks)} {}
 };
 
 PipelineResult
 run_pipeline(const char *, const IHashEngine &,
              size_t num_workers = std::thread::hardware_concurrency());
-
-

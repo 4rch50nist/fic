@@ -1,7 +1,6 @@
 #include "include/fic/Signer/SignerClient.hpp"
 #include "include/fic/Key/KeyFactory.hpp"
 #include <cstring>
-#include <iostream>
 #include <sodium.h>
 #include <stdexcept>
 #include <sys/socket.h>

@@ -1,11 +1,10 @@
+#include "include/fic/Pipeline/Pipeline.hpp"
 #include "include/fic/Pipeline/ThreadSafeQueue.hpp"
 #include <algorithm>
 #include <thread>
-#include "include/fic/Pipeline/Pipeline.hpp"
-/// Initializes a ThreadSafeQueue with depth of 128 that allows for num_workers.
-PipelineResult
-run_pipeline(const char *path, const IHashEngine &engine,
-             size_t num_workers) {
+
+PipelineResult run_pipeline(const char *path, const IHashEngine &engine,
+                            size_t num_workers) {
   if (!num_workers)
     num_workers = 4;
 
