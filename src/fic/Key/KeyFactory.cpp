@@ -1,4 +1,5 @@
 #include "include/fic/Key/KeyFactory.hpp"
+#include "include/fic/Key/Providers/KeyChainProvider.hpp"
 
 std::unique_ptr<KeyProvider> KeyFactory::create_key_provider() {
 #ifdef FIC_USE_KEYCHAIN

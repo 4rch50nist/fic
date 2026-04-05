@@ -29,10 +29,10 @@ constexpr size_t CHUNK_SIZE = (1 << 23);
  *       chunk carries whatever bytes remain and may be smaller.
  */
 struct Chunk {
-  uint64_t chunk_id; ///< Zero-based index of this chunk within the file.
-  uint64_t offset; ///< Byte offset of this chunk's first byte within the file.
-  size_t size;     ///< Number of valid bytes in data. Equal to CHUNK_SIZE for
-                   ///<   all chunks except possibly the last.
+  uint64_t chunk_id; /// Zero-based index of this chunk within the file.
+  uint64_t offset;   /// Byte offset of this chunk's first byte within the file.
+  size_t size;       /// Number of valid bytes in data. Equal to CHUNK_SIZE for
+                     /// all chunks except possibly the last.
 
   /**
    * @brief Owning buffer containing the raw file bytes for this chunk.
@@ -54,6 +54,8 @@ struct Chunk {
   Chunk &operator=(Chunk &&) = default;
   Chunk(const Chunk &) = delete;
   Chunk &operator=(const Chunk &) = delete;
+
+  Chunk() : chunk_id{}, offset{}, size{}, data{}, hash{} {}
 
   /**
    * @brief Construct a Chunk with its buffer and positional metadata.

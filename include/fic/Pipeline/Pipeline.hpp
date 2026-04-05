@@ -8,7 +8,7 @@ struct PipelineResult {
   StreamResult streamResult;
   std::vector<Chunk> chunks;
 
-  PipelineResult(const StreamResult &streamResult, std::vector<Chunk> &chunks)
+  PipelineResult(const StreamResult &streamResult, std::vector<Chunk> &&chunks)
       : streamResult{streamResult}, chunks{std::move(chunks)} {}
 };
 
