@@ -1,5 +1,4 @@
 #include "include/fic/Pipeline/Pipeline.hpp"
-#include "include/fic/Pipeline/ThreadSafeQueue.hpp"
 #include <thread>
 
 PipelineResult run_pipeline(const char *path, const IHashEngine &engine,
@@ -7,37 +6,45 @@ PipelineResult run_pipeline(const char *path, const IHashEngine &engine,
   if (!num_workers)
     num_workers = 4;
 
-  ThreadSafeQueue<Chunk> queue(128);
-  FileGuard fg{};
-  fg.bind(path);
-  fseek(fg.get(), 0, SEEK_END);
-  size_t size = static_cast<size_t>(ftell(fg.get()));
-  std::vector<Chunk> results((size / CHUNK_SIZE) + 1);
+  int fd = open(path, O_RDONLY);
+  size_t size = static_cast<size_t>(lseek(fd, 0, SEEK_END));
+  close(fd);
 
+  size_t num_chunks = (size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+  std::vector<Chunk> results(num_chunks);
+  std::atomic<size_t> next_chunk{0};
   std::vector<std::thread> workers;
   workers.reserve(num_workers);
 
   for (size_t i = 0; i < num_workers; i++) {
     workers.emplace_back([&]() {
+      int fd = open(path, O_RDONLY);
+#ifdef __APPLE__
+      fcntl(fd, F_RDAHEAD, 1);
+#endif
+
       while (true) {
-        auto item = queue.pop();
-        if (!item)
+        size_t chunk_id = next_chunk.fetch_add(1);
+        if (chunk_id >= num_chunks)
           break;
 
-        engine.hash(item->data.get(), item->size, item->hash);
-        item->release_data();
-        results[item->chunk_id] = std::move(*item);
+        size_t offset = chunk_id * CHUNK_SIZE;
+        size_t to_read = std::min(CHUNK_SIZE, size - offset);
+
+        auto buf = std::make_unique<uint8_t[]>(to_read);
+        pread(fd, buf.get(), to_read, static_cast<long long>(offset));
+
+        engine.hash(buf.get(), to_read, results[chunk_id].hash);
+        results[chunk_id].chunk_id = chunk_id;
+        results[chunk_id].offset = offset;
+        results[chunk_id].size = to_read;
       }
+      close(fd);
     });
   }
 
-  const StreamResult status = stream_chunk(path, [&](Chunk &&c) -> bool {
-    queue.push(std::move(c));
-    return true;
-  });
-  queue.close();
   for (auto &w : workers)
     w.join();
 
-  return PipelineResult{status, std::move(results)};
+  return PipelineResult{StreamResult::Ok, std::move(results)};
 }

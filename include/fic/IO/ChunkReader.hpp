@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <memory>
+#include <unistd.h>
 
 /**
  * @brief Size of each chunk read from a file during streaming, in bytes.
@@ -89,64 +90,3 @@ enum class StreamResult {
   ErrorRead, ///< An I/O error occurred during reading.
   Aborted, ///< on_chunk() returned false — caller requested early termination.
 };
-
-/**
- * @brief Stream a file as a sequence of fixed-size chunks, invoking a callback
- *        for each.
- *
- * Opens the file at @p path, reads it sequentially in CHUNK_SIZE blocks, and
- * calls @p on_chunk(Chunk &&) for each block. On macOS, F_RDAHEAD is enabled
- * to hint the kernel to prefetch pages ahead of the read cursor.
- *
- * The callback receives ownership of the Chunk's data buffer. It must return
- * true to continue streaming or false to abort early, in which case
- * StreamResult::Aborted is returned. The callback is responsible for consuming
- * or discarding the buffer before returning.
- *
- * Streaming stops naturally at EOF or immediately on any I/O error or false
- * return from @p on_chunk.
- *
- * @tparam F    Callable type satisfying: bool F(Chunk &&).
- * @param path      Null-terminated path to the file to stream.
- * @param on_chunk  Callback invoked once per chunk in order of ascending
- * offset.
- * @return          StreamResult indicating how the operation concluded.
- *
- * @throws Nothing — all errors are communicated via StreamResult.
- */
-template <typename F>
-StreamResult stream_chunk(const char *path, F &&on_chunk) {
-  FileGuard fg{};
-  try {
-    fg.bind(path);
-  } catch (std::runtime_error &) {
-    return StreamResult::ErrorOpen;
-  }
-
-  uint64_t chunk_id{0};
-  uint64_t offset{0};
-
-#ifdef __APPLE__
-  fcntl(fileno(fg.get()), F_RDAHEAD, 1);
-#endif
-
-  while (true) {
-    auto buf = std::make_unique<uint8_t[]>(CHUNK_SIZE);
-    size_t bytes_read = std::fread(buf.get(), 1, CHUNK_SIZE, fg.get());
-
-    if (bytes_read > 0) {
-      if (!on_chunk(Chunk{chunk_id, offset, bytes_read, std::move(buf)}))
-        return StreamResult::Aborted;
-      chunk_id++;
-      offset += bytes_read;
-    }
-
-    if (bytes_read < CHUNK_SIZE) {
-      if (std::ferror(fg.get()))
-        return StreamResult::ErrorRead;
-      break;
-    }
-  }
-
-  return StreamResult::Ok;
-}
